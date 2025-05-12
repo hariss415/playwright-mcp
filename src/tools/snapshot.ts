@@ -21,7 +21,7 @@ import { z } from 'zod';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { sanitizeForFilePath } from './utils';
-import { generateLocator } from '../context';
+import { generateLocator, Tab } from '../context';
 import * as javascript from '../javascript';
 
 import type * as playwright from 'playwright';
@@ -51,6 +51,22 @@ const elementSchema = z.object({
   ref: z.string().describe('Exact target element reference from the page snapshot'),
 });
 
+export async function handleStaleRef(page: playwright.Page, ref: string): Promise<string> {
+  // Take a fresh snapshot if ref is stale
+  const tab = new Tab({ ensureTab: async () => page } as any, page, () => {});
+  await tab.captureSnapshot();
+  const snapshot = tab.snapshotOrDie();
+  
+  const expectedPrefix = `s${parseInt(ref.match(/s(\d+)e/)?.[1] || '0') + 1}e`;
+  
+  // If the ref is stale, find the matching element in the new snapshot
+  if (ref.startsWith(`s${parseInt(ref.match(/s(\d+)e/)?.[1] || '0')}e`)) {
+    const newRef = snapshot.text().match(new RegExp(`ref=(${expectedPrefix}\\d+)`))?.[1];
+    return newRef || ref;
+  }
+  return ref;
+}
+
 const click: Tool = {
   capability: 'core',
   schema: {
@@ -62,7 +78,8 @@ const click: Tool = {
   handle: async (context, params) => {
     const validatedParams = elementSchema.parse(params);
     const tab = context.currentTabOrDie();
-    const locator = tab.snapshotOrDie().refLocator(validatedParams.ref);
+    const ref = await handleStaleRef(tab.page, validatedParams.ref);
+    const locator = tab.snapshotOrDie().refLocator(ref);
 
     const code = [
       `// Click ${validatedParams.element}`,
@@ -218,6 +235,37 @@ const selectOption: Tool = {
   },
 };
 
+const selectRadioSchema = elementSchema.extend({
+  value: z.string().describe('Value of the radio button to select'),
+});
+
+const selectRadio: Tool = {
+  capability: 'core',
+  schema: {
+    name: 'browser_select_radio',
+    description: 'Select a radio button',
+    inputSchema: zodToJsonSchema(selectRadioSchema),
+  },
+
+  handle: async (context, params) => {
+    const validatedParams = selectRadioSchema.parse(params);
+    const snapshot = context.currentTabOrDie().snapshotOrDie();
+    const locator = snapshot.refLocator(validatedParams.ref);
+
+    const code = [
+      `// Select radio button "${validatedParams.element}" with value "${validatedParams.value}"`,
+      `await page.${await generateLocator(locator)}.check();`
+    ];
+
+    return {
+      code,
+      action: () => locator.check(),
+      captureSnapshot: true,
+      waitForNetwork: true,
+    };
+  },
+};
+
 const screenshotSchema = z.object({
   raw: z.boolean().optional().describe('Whether to return without compression (in PNG format). Default is false, which returns a JPEG image.'),
   element: z.string().optional().describe('Human-readable element description used to obtain permission to screenshot the element. If not provided, the screenshot will be taken of viewport. If element is provided, ref must be provided too.'),
@@ -285,5 +333,6 @@ export default [
   hover,
   type,
   selectOption,
+  selectRadio,
   screenshot,
 ];

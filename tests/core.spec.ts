@@ -208,3 +208,68 @@ await page.setViewportSize({ width: 390, height: 780 });
 \`\`\``);
   await expect.poll(() => client.callTool({ name: 'browser_snapshot' })).toContainTextContent('Window size: 390x780');
 });
+
+test('browser_select_radio', async ({ client }) => {
+  await client.callTool({
+    name: 'browser_navigate',
+    arguments: {
+      url: 'data:text/html,<html><title>Title</title><div><input type="radio" name="choice" value="option1">Option 1</input><input type="radio" name="choice" value="option2">Option 2</input></div></html>',
+    },
+  });
+
+  expect(await client.callTool({
+    name: 'browser_select_radio',
+    arguments: {
+      element: 'Option 2',
+      ref: 's1e4',
+      value: 'option2'
+    },
+  })).toHaveTextContent(`
+- Ran Playwright code:
+\`\`\`js
+// Select radio button "Option 2" with value "option2"
+await page.getByRole('radio', { name: 'Option 2' }).check();
+\`\`\``);
+});
+
+test('browser_handle_stale_refs', async ({ client }) => {
+  await client.callTool({
+    name: 'browser_navigate',
+    arguments: {
+      url: 'data:text/html,<html><title>Stale Test</title><div><input type="radio" name="choice" id="option1">Option 1</input></div></html>',
+    },
+  });
+
+  // First snapshot to get initial ref
+  await client.callTool({
+    name: 'browser_snapshot',
+    arguments: {},
+  });
+
+  // Simulate page update that would cause ref staleness
+  await client.callTool({
+    name: 'browser_navigate',
+    arguments: {
+      url: 'data:text/html,<html><title>Stale Test</title><div><input type="radio" name="choice" id="option1">Option 1</input></div></html>',
+    },
+  });
+
+  // Get fresh snapshot after page update
+  const snapshot = await client.callTool({
+    name: 'browser_snapshot',
+    arguments: {},
+  });
+
+  // Extract new ref from snapshot
+  const newRef = snapshot.match(/ref=(s\de\d+)/)?.[1];
+  expect(newRef).toBeTruthy();
+
+  // Attempt click with fresh ref
+  expect(await client.callTool({
+    name: 'browser_click',
+    arguments: {
+      element: 'Option 1',
+      ref: newRef,
+    },
+  })).toContainTextContent('Click Option 1');
+});

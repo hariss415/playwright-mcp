@@ -37,6 +37,36 @@ type PendingAction = {
   dialogShown: ManualPromise<void>;
 };
 
+type UserProfileData = {
+  name: string;
+  title: string;
+  location: string;
+  membershipDuration: string;
+  lastSeen: string;
+  stats: {
+    reputation: number;
+    reach: number;
+    answers: number;
+    questions: number;
+  };
+  expertise: Array<{
+    tag: string;
+    score: number;
+    posts: number;
+    postsPercentage: number;
+  }>;
+  badges: {
+    silver: number;
+    bronze: number;
+  };
+  communities: Array<{
+    name: string;
+    reputation: number;
+  }>;
+  githubProfile?: string;
+  about?: string;
+};
+
 export class Context {
   readonly tools: Tool[];
   readonly options: ContextOptions;
@@ -199,9 +229,22 @@ ${code.join('\n')}
 
   async waitForTimeout(time: number) {
     if (this._currentTab && !this._javaScriptBlocked())
-      await this._currentTab.page.evaluate(() => new Promise(f => setTimeout(f, 1000)));
+      await this._currentTab.page.evaluate(() => new Promise(f => setTimeout(f, 30000)));
     else
       await new Promise(f => setTimeout(f, time));
+  }
+
+  async storeUserProfile(profile: UserProfileData, filepath: string) {
+    const page = this.currentTabOrDie().page;
+    const fs = require('fs').promises;
+    
+    try {
+      await fs.writeFile(filepath, JSON.stringify(profile, null, 2));
+      console.log(`Profile data saved to ${filepath}`);
+    } catch (error) {
+      console.error('Failed to save profile data:', error);
+      throw error;
+    }
   }
 
   private async _raceAgainstModalDialogs(action: () => Promise<ToolActionResult>): Promise<ToolActionResult> {

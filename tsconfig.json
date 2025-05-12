@@ -6,9 +6,10 @@
     "moduleResolution": "node",
     "strict": true,
     "module": "CommonJS",
-    "outDir": "./lib"
+    "outDir": "./lib",
+    "types": ["node"]
   },
   "include": [
-    "src",
-  ],
+    "src"
+  ]
 }

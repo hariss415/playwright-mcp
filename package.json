@@ -8,7 +8,8 @@
   },
   "homepage": "https://playwright.dev",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
   },
   "author": {
     "name": "Microsoft Corporation"
@@ -33,9 +34,14 @@
     }
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.6.1",
+    "@modelcontextprotocol/sdk": "^1.10.1",
+    "@playwright/mcp": "^0.0.15",
+    "axios": "^1.9.0",
+    "cheerio": "^1.0.0",
     "commander": "^13.1.0",
-    "playwright": "^1.52.0-alpha-1743163434000",
+    "dotenv": "^16.5.0",
+    "openai": "^4.28.0",
+    "playwright": "^1.42.0",
     "yaml": "^2.7.1",
     "zod-to-json-schema": "^3.24.4"
   },
@@ -44,6 +50,8 @@
     "@eslint/js": "^9.19.0",
     "@playwright/test": "^1.52.0-alpha-1743163434000",
     "@stylistic/eslint-plugin": "^3.0.1",
+    "@types/estree": "^1.0.7",
+    "@types/json-schema": "^7.0.15",
     "@types/node": "^22.13.10",
     "@typescript-eslint/eslint-plugin": "^8.26.1",
     "@typescript-eslint/parser": "^8.26.1",
@@ -53,7 +61,9 @@
     "eslint-plugin-notice": "^1.0.0",
     "typescript": "^5.8.2"
   },
+  "preferGlobal": true,
   "bin": {
-    "mcp-server-playwright": "cli.js"
+    "mcp-server": "./cli.js",
+    "mcp-server-playwright": "./cli.js"
   }
 }

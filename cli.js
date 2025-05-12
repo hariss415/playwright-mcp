@@ -16,3 +16,4 @@
  */
 
 require('./lib/program');
+console.log('CLI script is running');
